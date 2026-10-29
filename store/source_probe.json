@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-10-29T15:59",
+  "measured_at": "2026-10-29T17:13",
   "rows": [
     {
       "source": "연합뉴스 경제",
@@ -7,9 +7,9 @@
       "http": 200,
       "entries": 120,
       "last24h": 120,
-      "summary": 88,
-      "newest_h": 0.3,
-      "body_ok": 2,
+      "summary": 83,
+      "newest_h": 0.2,
+      "body_ok": 3,
       "body_tried": 3,
       "error": ""
     },
@@ -19,8 +19,8 @@
       "http": 200,
       "entries": 120,
       "last24h": 120,
-      "summary": 80,
-      "newest_h": 0.3,
+      "summary": 83,
+      "newest_h": 0.1,
       "body_ok": 3,
       "body_tried": 3,
       "error": ""
@@ -32,7 +32,7 @@
       "entries": 50,
       "last24h": 50,
       "summary": 0,
-      "newest_h": 0.9,
+      "newest_h": 1.1,
       "body_ok": 3,
       "body_tried": 3,
       "error": ""
@@ -44,7 +44,7 @@
       "entries": 50,
       "last24h": 50,
       "summary": 0,
-      "newest_h": 0.1,
+      "newest_h": 0.3,
       "body_ok": 3,
       "body_tried": 3,
       "error": ""
@@ -66,9 +66,9 @@
       "url": "https://www.mk.co.kr/rss/30100041/",
       "http": 200,
       "entries": 50,
-      "last24h": 36,
+      "last24h": 37,
       "summary": 102,
-      "newest_h": 0.2,
+      "newest_h": 0.0,
       "body_ok": 3,
       "body_tried": 3,
       "error": ""
@@ -78,9 +78,9 @@
       "url": "https://www.mk.co.kr/rss/50100032/",
       "http": 200,
       "entries": 50,
-      "last24h": 45,
-      "summary": 101,
-      "newest_h": 0.0,
+      "last24h": 50,
+      "summary": 102,
+      "newest_h": 0.1,
       "body_ok": 3,
       "body_tried": 3,
       "error": ""
@@ -93,7 +93,7 @@
       "last24h": 100,
       "summary": 0,
       "newest_h": 0.1,
-      "body_ok": 2,
+      "body_ok": 3,
       "body_tried": 3,
       "error": ""
     },
@@ -104,7 +104,7 @@
       "entries": 50,
       "last24h": 0,
       "summary": 202,
-      "newest_h": 26.3,
+      "newest_h": 27.5,
       "body_ok": 3,
       "body_tried": 3,
       "error": ""
@@ -115,9 +115,9 @@
       "http": 200,
       "entries": 100,
       "last24h": 100,
-      "summary": 377,
+      "summary": 379,
       "newest_h": 0.0,
-      "body_ok": 2,
+      "body_ok": 3,
       "body_tried": 3,
       "error": ""
     },
@@ -139,9 +139,9 @@
       "http": 200,
       "entries": 100,
       "last24h": 100,
-      "summary": 907,
-      "newest_h": 0.3,
-      "body_ok": 3,
+      "summary": 1056,
+      "newest_h": 0.1,
+      "body_ok": 2,
       "body_tried": 3,
       "error": ""
     },
@@ -151,8 +151,8 @@
       "http": 200,
       "entries": 100,
       "last24h": 2,
-      "summary": 1565,
-      "newest_h": 4.0,
+      "summary": 95,
+      "newest_h": 5.2,
       "body_ok": 0,
       "body_tried": 3,
       "error": ""
@@ -175,8 +175,8 @@
       "http": 200,
       "entries": 30,
       "last24h": 3,
-      "summary": 137,
-      "newest_h": 9.5,
+      "summary": 124,
+      "newest_h": 10.7,
       "body_ok": 3,
       "body_tried": 3,
       "error": ""

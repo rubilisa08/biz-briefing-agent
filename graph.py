@@ -30,9 +30,15 @@ if sys.stdout is not None and hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = Path(__file__).resolve().parent
+try:                                            # 내 PC에서는 .env 의 웹훅 주소·키를 읽는다 (Actions 는 Secrets 로 받는다)
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+except ImportError:
+    pass
 AUD = yaml.safe_load((ROOT / "audience.yaml").read_text(encoding="utf-8"))
 SEL = AUD["selection"]
-METRICS = ROOT / "store" / "metrics.jsonl"
+# 레포에 남는 기록은 GitHub Actions 실행분만 — 내 PC에서 돌린 기록은 따로 두어 커밋이 엉키지 않게
+METRICS = ROOT / "store" / ("metrics.jsonl" if os.environ.get("GITHUB_ACTIONS") == "true" else "metrics.local.jsonl")
 
 class Brief(TypedDict):
     hours:      int                              # 수집 time window(시간)
@@ -52,9 +58,19 @@ KST = timezone(timedelta(hours=9))
 EXCLUDE = [re.compile(p) for p in AUD["exclude"]["title_patterns"]]
 
 def strip_tags(s):
-    s = html.unescape(re.sub(r"<[^>]+>", " ", s or ""))    # 문단 태그 자리에 띄어쓰기, &quot; 같은 기호는 글자로
+    s = html.unescape(s or "")                             # 한국은행처럼 태그를 &lt;p&gt; 로 한 번 더 감싼 피드가 있다
+    s = html.unescape(re.sub(r"<[^>]+>", " ", s))          # 문단 태그 자리에 띄어쓰기, &quot; 같은 기호는 글자로
     s = re.sub(r"([.!?])(?=[가-힣A-Z\"'“‘])", r"\1 ", s)   # "앞섰다.중국"처럼 붙은 문장 사이 (3.8 같은 숫자는 그대로)
     return re.sub(r"\s+", " ", s).strip()
+
+BYLINE = re.compile(
+    r"^\s*(?:[\[(][^\])]{1,20}=[^\])]{1,15}[\])]\s*)?"                                  # [서울=뉴시스] · (서울=연합뉴스)
+    r"(?:(?:[가-힣]{1,4}\s+){0,3}[가-힣]{1,4}\s*(?:기자|특파원|선임기자|객원기자)\s*=\s*)?"  # 홍길동 기자 = · 정회인 곽윤아 기자 =
+    r"(?:\[[^\]]{1,25}(?:기자|특파원)\]\s*)?")                                           # [아시아경제 이민지 기자]
+BOILERPLATE = re.compile(r"\[이 기사에 나온[^\]]*\]")                                     # 머니투데이 데이터랩 안내문
+
+def drop_byline(text):                         # 요약 첫머리의 매체·기자 표기와 안내문은 독자에게 정보가 아니다
+    return BOILERPLATE.sub("", BYLINE.sub("", text, count=1)).strip()
 
 def published_at(entry, tz=timezone.utc):
     t = entry.get("published_parsed") or entry.get("updated_parsed")   # Atom은 updated만 줄 때가 있다
@@ -90,11 +106,12 @@ def collect(s: dict) -> dict:
             if key in seen:
                 continue
             seen.add(key)
-            text = strip_tags(e.get("summary", ""))
+            text = drop_byline(strip_tags(e.get("summary", "")))
             item = {"title": strip_tags(e.title), "url": e.link, "source": name, "at": at,
                     "summary": text[:300]}
-            if src.get("feed_as_body"):         # 본문 추출이 안 되는 1차 기관 — 피드 전문을 본문으로 쓴다
+            if src.get("feed_as_body"):         # 본문 추출이 안 되는 1차 기관 — 피드 글을 본문으로 쓴다
                 item["feed_body"] = text[:6000]
+                item["min_body"] = src.get("min_body", MIN_BODY)
             items.append(item)
     by_source = dict(Counter(it["source"] for it in items))
     return {"collected": items,
@@ -116,7 +133,9 @@ def _kw_pattern(kw):
         return re.compile(rf"(?<![A-Za-z]){re.escape(kw)}(?![A-Za-z])", re.IGNORECASE)
     return re.compile(re.escape(kw))
 
-CATS = [{**c, "patterns": [(kw, _kw_pattern(kw)) for kw in c["keywords"]]} for c in AUD["categories"]]
+# 긴 키워드부터 — '소비자물가'가 걸리면 그 안의 '물가'·'소비'는 다시 세지 않는다 (classify)
+CATS = [{**c, "patterns": [(kw, _kw_pattern(kw)) for kw in sorted(c["keywords"], key=len, reverse=True)]}
+        for c in AUD["categories"]]
 NUMBER = re.compile(AUD["signals"]["number_pattern"])
 PENALTY = [re.compile(p) for p in AUD["exclude"]["penalty_patterns"]]
 
@@ -126,6 +145,8 @@ def classify(item):
     for c in CATS:
         score, hits = 0, []
         for kw, pat in c["patterns"]:
+            if any(kw in h for h in hits):      # 이미 센 더 긴 키워드 안에 들어 있으면 건너뛴다
+                continue
             if pat.search(item["title"]):
                 score, hits = score + 2, hits + [kw]
             elif pat.search(item["summary"]):
@@ -147,12 +168,19 @@ def reason_of(c):
         parts.append("홍보성 감점")
     return " · ".join(parts)
 
-def title_words(title):                        # 같은 사건 판단용 — 두 글자 이상 낱말
-    return set(re.findall(r"[가-힣A-Za-z0-9]{2,}", title))
+# 실적·지표 기사라면 어디에나 나오는 말 — 이것만 겹쳐서는 같은 사건이 아니다
+# (예: '대한유화, 3분기 영업이익 작년 동기 대비…' ↔ '금호타이어, 3분기 영업이익 작년 동기 대비…')
+COMMON = {"속보", "단독", "종합", "분기", "3분기", "영업이익", "영업익", "순이익", "매출", "작년", "전년", "동기", "대비",
+          "증가", "감소", "상승", "하락", "흑자", "적자", "흑자전환", "적자전환", "기록", "발표", "전망", "기준금리",
+          "금리", "동결", "인상", "인하", "환율", "원달러", "달러", "실적", "역대", "최대", "최고", "최저", "올해", "내년"}
 
-def same_story(a, b):                          # 낱말이 40% 이상 겹치면 같은 사건을 다룬 기사로 본다
+def title_words(title):                        # 같은 사건 판단용 — 숫자와 흔한 말을 뺀 두 글자 이상 낱말
+    words = re.findall(r"[가-힣A-Za-z0-9]{2,}", title)
+    return {w for w in words if not re.search(r"\d", w) and w not in COMMON}
+
+def same_story(a, b):                          # 고유한 낱말(회사·기관 이름 등)이 40% 이상 겹치면 같은 사건으로 본다
     wa, wb = title_words(a), title_words(b)    # 예: 'OCI홀딩스, 3분기 영업익…흑자전환' ↔ 'OCI홀딩스, 매출 1조 돌파에 흑자전환'
-    return bool(wa and wb) and len(wa & wb) / min(len(wa), len(wb)) >= 0.4
+    return bool(wa & wb) and len(wa & wb) / min(len(wa), len(wb)) >= 0.4
 
 # 무료 버전 — LLM 대신 키워드 점수로 고른다. Gemini로 바꿀 땐 ask_picks 만 갈아 끼운다 (같은 Pick 모양).
 def ask_picks(items, n):
@@ -165,6 +193,7 @@ def ask_picks(items, n):
             break
         c = labels[i]
         if final and (c["score"] < SEL["min_score"] or c["category"] == "기타"
+                      or len(items[i]["summary"]) < MIN_SUMMARY   # 요약이 비면 검수에서 떨어질 칸 — 본선에서 미리 뺀다
                       or per_source[items[i]["source"]] >= SEL["per_source"]
                       or per_cat[c["category"]] >= SEL["per_category"]
                       or any(same_story(items[i]["title"], items[p.index]["title"]) for p in picks)):
@@ -223,9 +252,10 @@ def report(s: ReportIn) -> dict:
         body = extract_body(it["url"])
     except Exception:
         body = None
-    if (not body or len(body) < MIN_BODY) and len(it.get("feed_body", "")) >= MIN_BODY:
-        body = it["feed_body"]                  # 한국은행 보도자료처럼 피드가 전문을 주는 1차 소스
-    if not body or len(body) < MIN_BODY:
+    need = it.get("min_body", MIN_BODY)         # 1차 기관은 audience.yaml 에서 기준을 따로 정한다
+    if (not body or len(body) < MIN_BODY) and len(it.get("feed_body", "")) >= need:
+        body = it["feed_body"]                  # 한국은행처럼 본문 추출은 안 되지만 피드가 핵심 문장을 주는 1차 소스
+    if not body or len(body) < need:
         return {"drafted": [],
                 "log": [f"   취재 제외 {it['source']} · 본문 {len(body or '')}자"]}
     return {"drafted": [{**it, "body": body[:6000], **draft(it, body)}],
@@ -367,7 +397,15 @@ def write_metrics(out):
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 def run():
-    out = build().compile().invoke(INIT)
+    try:
+        out = build().compile().invoke(INIT)
+    except Exception as ex:                     # 발행 실패 등으로 멈춘 실행도 기록에 남긴다
+        METRICS.parent.mkdir(exist_ok=True)
+        with METRICS.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({"run_at": datetime.now(KST).isoformat(timespec="seconds"),
+                                "dry_run": os.environ.get("DRY_RUN", "1") != "0", "published": False,
+                                "error": f"{type(ex).__name__}: {ex}"}, ensure_ascii=False) + "\n")
+        raise
     write_metrics(out)
     return out
 

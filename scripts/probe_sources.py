@@ -6,11 +6,12 @@
   http      응답 코드 (200이 아니면 G3 접근 탈락)
   entries   피드가 한 번에 주는 건수
   last24h   최근 24시간 안 건수 (0이면 G2 생존 탈락에 가깝다)
-  summary   첫 글 요약 길이 (피드가 주는 재료의 양)
+  summary   피드 요약 길이의 중앙값 (피드가 주는 재료의 양)
   newest_h  최신 글이 몇 시간 전인지 (음수면 시간대 없는 날짜)
   body_ok   최근 글 3건 중 본문 600자 이상 뽑힌 건수 (G1 본문)
 """
 
+import html
 import json
 import re
 import sys
@@ -43,8 +44,10 @@ CANDIDATES = [
 MIN_BODY = 600
 
 
-def strip(s):
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", s or "")).strip()
+def strip(s):                                  # graph.strip_tags 와 같은 순서 — &lt;p&gt; 로 감싼 태그도 풀어서 지운다
+    s = html.unescape(s or "")
+    s = html.unescape(re.sub(r"<[^>]+>", " ", s))
+    return re.sub(r"\s+", " ", s).strip()
 
 
 def probe(name, url):
@@ -67,8 +70,9 @@ def probe(name, url):
     row["entries"] = len(f.entries)
     row["last24h"] = sum(1 for a in ages if -12 <= a <= 24)   # 시간대 없는 날짜(KST) 오차를 감안
     row["newest_h"] = round(min(ages), 1) if ages else None
-    if f.entries:
-        row["summary"] = len(strip(f.entries[0].get("summary", "")))
+    if f.entries:                              # 첫 글 하나는 들쭉날쭉하다 — 전체 글 요약 길이의 중앙값
+        lengths = sorted(len(strip(e.get("summary", ""))) for e in f.entries)
+        row["summary"] = lengths[len(lengths) // 2]
     for e in f.entries[:3]:
         if not e.get("link"):
             continue

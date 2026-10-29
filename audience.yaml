@@ -29,7 +29,8 @@ categories:
     question: 기업 환경이 어떻게 바뀔까?
     color: 0x2F6FB2
     keywords: [금리, 기준금리, 물가, 소비자물가, CPI, 인플레이션, 환율, 원·달러, 원달러, 달러, 소비, 소매판매,
-               고용, 실업률, 성장률, GDP, 수출, 수입, 무역수지, 경상수지, 국채, 금통위, 연준, Fed, 경기]
+               고용, 실업률, 성장률, GDP, 수출, 수입, 무역수지, 경상수지, 국채, 금통위, 연준, Fed,
+               경기침체, 경기 둔화, 경기 회복, 경기 부진, 경기지표]   # '경기'만 쓰면 '경기도'에 걸린다
   - name: 기업 실적
     question: 기업의 수익성은 왜 변했을까?
     color: 0x2E7D5B
@@ -72,7 +73,9 @@ selection:
 # 관문: G1 본문(최근 3건 중 2건 이상 600자↑) · G2 생존(24시간 안 글 5건↑) · G3 접근(HTTP 200)
 #       + 무료판 조건: 피드 요약 80자↑ (무료판은 피드 요약을 발행 요약으로 쓴다)
 sources:
-  - {name: 한국은행,       url: 'https://www.bok.or.kr/portal/bbs/B0000501/news.rss?menuNo=201264', tier: 1, feed_as_body: true}
+  # 한국은행: 본문은 첨부 파일이라 추출되지 않는다. 피드 글(중앙값 약 100자, 최대 약 300자)에 금리·수치가 담겨 있어
+  #          피드 글을 본문으로 쓰되, 600자 대신 150자 기준을 따로 둔다 (min_body)
+  - {name: 한국은행,       url: 'https://www.bok.or.kr/portal/bbs/B0000501/news.rss?menuNo=201264', tier: 1, feed_as_body: true, min_body: 150}
   - {name: 연합뉴스 경제,   url: 'https://www.yna.co.kr/rss/economy.xml',  tier: 2}
   - {name: 연합뉴스 산업,   url: 'https://www.yna.co.kr/rss/industry.xml', tier: 2}
   - {name: 매일경제 경제,   url: 'https://www.mk.co.kr/rss/30100041/',     tier: 2}
