@@ -47,7 +47,7 @@ uv run python scripts/trace_run.py
 
 ## 매일 자동 실행 (GitHub Actions)
 
-1. **Settings → Secrets and variables → Actions**에 `DISCORD_WEBHOOK_URL`을 등록해요.
+1. **Settings → Secrets and variables → Actions**에 Discord 웹훅 주소를 `WEBHOOK_URL`이라는 이름으로 등록해요.
 2. 매일 22:30 UTC에 실행돼요. GitHub 예약 실행은 몇 분~몇 시간 늦게 시작할 수 있어요.
 3. **Actions → 매일 비즈 브리핑 → Run workflow**로 손으로도 돌릴 수 있어요. "발행하지 않고 로그만 남기기"를 체크하면 보내지 않아요.
 4. 실행이 끝나면 `store/metrics.jsonl`에 기록이 커밋돼요.

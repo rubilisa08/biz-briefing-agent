@@ -30,7 +30,7 @@ jobs:
       - name: 브리핑 생성·발행
         run: python run.py ${{ inputs.dry_run && '--dry-run' || '' }}
         env:                     # ④ 비밀값은 여기로만 들어간다
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}   # 레포 Secrets 에 등록한 이름
           TZ: Asia/Seoul
           DRY_RUN: "0"           # ⑤ 이 줄이 없으면 Actions에서는 한 번도 안 보낸다
 
